@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ZSC 软件库 · 未来</title>
+<meta name="description" content="ZSC 软件库 — 高级专业界面，内置粒子与星云背景，3D 卡片，主题切换与 dmg.apk 本地下载" />
+<link rel="icon" href="data:," />
+<style>
+/* ================= 基础重置 ================= */
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter, "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;}
+:root{
+  --bg-0:#04060a; --bg-1:#071226;
+  --card-bg: rgba(255,255,255,0.03);
+  --accent1:#4da8ff; --accent2:#8f7cff; --neon:#00ffe1;
+  --text:#e9eef8; --muted: rgba(233,238,248,0.65);
+  --card-radius:16px;
+  --max-width:1200px;
+}
+
+/* 主题 */
+:root.theme-light{
+  --bg-0:#f6f8fb; --bg-1:#eef3fb;
+  --text:#0b1220; --muted: rgba(11,18,32,0.6);
+  --accent1:#1f6eff; --accent2:#6f4cff;
+}
+:root.theme-neon{
+  --bg-0:#05020b; --bg-1:#05020b; --neon:#7cfff0;
+  --text:#eafcff; --muted: rgba(232,247,255,0.65);
+  --accent1:#7c5cff; --accent2:#4ba1ff;
+}
+
+body{
+  background: linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 100%);
+  color:var(--text);
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  transition: background .35s ease, color .35s ease;
+}
+
+/* 背景 Canvas */
+.bg-canvas { position:fixed; inset:0; z-index:0; pointer-events:none; }
+
+/* 启动遮罩 */
+.loader-mask{
+  position:fixed; inset:0; z-index:9999; display:flex;align-items:center;justify-content:center;
+  background: radial-gradient(circle at 20% 20%, rgba(4,8,15,0.9), rgba(4,8,15,0.96));
+  transition: opacity .6s cubic-bezier(.2,.9,.3,1), visibility .6s;
+}
+.loader-inner{ text-align:center; color:var(--text); }
+.loader-logo{
+  width:96px;height:96px;border-radius:18px;display:inline-flex;align-items:center;justify-content:center;
+  font-size:26px;font-weight:800;background:linear-gradient(135deg,var(--accent1),var(--accent2));
+  box-shadow: 0 20px 60px rgba(80,140,255,0.12);
+}
+.loader-title{ font-size:18px;margin-top:12px }
+.loader-sub{ margin-top:8px;color:var(--muted) }
+
+/* 主容器 */
+.app-wrap{ width:100%; max-width:var(--max-width); position:relative; z-index:4; }
+
+/* 顶栏 */
+.header{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;
+}
+.brand{ display:flex;align-items:center;gap:12px; }
+.logo{
+  width:60px;height:60px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:20px;color:#071226;background:linear-gradient(135deg,var(--accent1),var(--accent2));
+  box-shadow: 0 12px 40px rgba(50,90,200,0.12);
+}
+.title{ font-size:18px;margin:0 }
+.subtitle{ font-size:13px;color:var(--muted);margin-top:4px }
+
+/* 主题切换 */
+.controls{ display:flex;align-items:center;gap:8px; }
+.switch{ display:flex;gap:6px;align-items:center;background:rgba(255,255,255,0.02);padding:6px;border-radius:12px;border:1px solid rgba(255,255,255,0.03); }
+.theme-btn{ background:transparent;border:none;padding:8px;border-radius:10px;color:var(--muted);cursor:pointer;font-weight:600;font-size:13px; }
+.theme-btn.active{ color:var(--text); box-shadow: 0 6px 18px rgba(80,140,255,0.12); transform: translateY(-2px); }
+
+/* 主面板 */
+.container{
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border-radius:18px;padding:18px; box-shadow: 0 18px 60px rgba(2,6,18,0.6);
+  border: 1px solid rgba(255,255,255,0.04); backdrop-filter: blur(12px) saturate(140%);
+}
+
+/* 网格 */
+.grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap:14px;
+  margin-top:12px;
+}
+
+/* 卡片 */
+.card{
+  position:relative;padding:12px;border-radius:14px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border:1px solid rgba(255,255,255,0.04); transform-style:preserve-3d; transition: transform .22s cubic-bezier(.2,.9,.3,1), box-shadow .22s, filter .22s;
+  display:flex;gap:10px;align-items:center;min-height:100px;cursor:default;overflow:hidden;
+}
+.card .icon{
+  width:72px;height:72px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;color:#071226;
+  background: linear-gradient(135deg,#ffd6a5,#ff758c); box-shadow: 0 8px 24px rgba(255,80,100,0.12); transform: translateZ(30px);
+}
+.card .info{ flex:1; transform: translateZ(30px); }
+.card .name{ font-size:16px;margin:0; color:var(--text); }
+.card .desc{ margin:6px 0 0;color:var(--muted); font-size:13px; line-height:1.3; max-width:100%; word-break:break-word; }
+
+/* 操作区 */
+.ops{ display:flex;flex-direction:column;gap:8px;align-items:flex-end; transform: translateZ(30px); }
+.btn{
+  border:none;padding:10px 14px;border-radius:10px;font-weight:700;cursor:pointer;background:linear-gradient(90deg,var(--accent1),var(--accent2));color:white;font-size:14px;
+  box-shadow: 0 8px 26px rgba(80,140,255,0.12);
+}
+.btn:active{ transform: scale(.98); }
+
+/* 进度 */
+.progress{ width:180px; height:10px;border-radius:8px;overflow:hidden;background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.03); display:none; align-items:center; }
+.progress > i{ display:block;height:100%; width:0%; background: linear-gradient(90deg,var(--accent1),var(--accent2)); transition: width .12s linear; }
+.pct{ font-size:12px;color:var(--muted); margin-left:8px; }
+
+/* hover state */
+.card.hover{ transform: translateY(-8px) rotateX(6deg) rotateY(0deg); box-shadow: 0 30px 80px rgba(3,8,20,0.6); filter:saturate(1.03); }
+
+/* 卡片入场 */
+.card[data-idx]{ opacity:0; transform: translateY(10px) scale(.997); }
+.card.enter{ animation: cardIn .62s cubic-bezier(.2,.9,.3,1) forwards; }
+@keyframes cardIn{ to{ opacity:1; transform: translateY(0) scale(1); } }
+
+/* footer */
+.footer{ margin-top:12px;text-align:right;color:var(--muted);font-size:12px; }
+
+/* ================= 响应式：移动端特殊布局 ================= */
+@media (max-width:768px){
+  body{ padding:14px; }
+  .header{ flex-direction:row; align-items:center; gap:10px; }
+  .logo{ width:48px;height:48px; font-size:18px; border-radius:12px; }
+  .title{ font-size:16px; }
+  .subtitle{ font-size:12px }
+  .switch{ padding:4px; border-radius:10px; }
+  .theme-btn{ padding:6px 8px; font-size:12px; border-radius:8px; }
+
+  .container{ padding:12px; border-radius:14px; }
+  .grid{ grid-template-columns: 1fr; gap:10px; }
+  .card{ padding:10px; min-height:82px; border-radius:12px; gap:8px; }
+  .card .icon{ width:56px;height:56px;font-size:22px;border-radius:10px; flex:0 0 56px; box-shadow:0 8px 20px rgba(255,80,100,0.1); }
+  .card .name{ font-size:15px; }
+  .card .desc{ font-size:12px; color:var(--muted); }
+  .ops{ align-items:stretch; width:36%; min-width:110px; }
+  /* 下载按钮在移动端铺满卡片右侧宽度更合理：改为块级并居中 */
+  .ops .btn{ width:100%; padding:10px 12px; font-size:14px; border-radius:10px; }
+  .progress{ width:100%; }
+  .progress > i{ transition: width .12s linear; }
+  .footer{ font-size:11px; }
+}
+
+/* 最小屏更紧凑 */
+@media (max-width:420px){
+  .logo{ width:44px;height:44px; }
+  .ops{ width:40%; min-width:96px; }
+  .card{ gap:8px; padding:8px; }
+  .card .desc{ display:block; max-height:38px; overflow:hidden; text-overflow:ellipsis; }
+}
+
+/* Accessibility */
+.card:focus-within{ outline: 2px solid rgba(80,140,255,0.12); outline-offset:4px; }
+</style>
+</head>
+<body>
+
+<canvas id="bgCanvas" class="bg-canvas" aria-hidden="true"></canvas>
+
+<!-- 启动加载遮罩 -->
+<div id="loader" class="loader-mask" role="status" aria-live="polite">
+  <div class="loader-inner">
+    <div class="loader-logo">ZSC</div>
+    <div class="loader-title">ZSC 软件库</div>
+    <div class="loader-sub">正在唤醒界面 · 请稍候…</div>
+  </div>
+</div>
+
+<div class="app-wrap" role="application" aria-label="ZSC 软件库">
+  <div class="container" id="mainContainer" role="main" aria-live="polite">
+    <div class="header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">ZSC</div>
+        <div>
+          <div class="title">ZSC 软件库</div>
+          <div class="subtitle">高级专业 UI · 自适应移动 / PC</div>
+        </div>
+      </div>
+
+      <div class="controls" aria-hidden="false">
+        <div class="switch" role="tablist" aria-label="主题切换">
+          <button class="theme-btn" data-theme="dark" title="暗黑">暗黑</button>
+          <button class="theme-btn" data-theme="light" title="亮色">亮色</button>
+          <button class="theme-btn" data-theme="neon" title="霓虹">霓虹</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid" id="appGrid" aria-live="polite">
+      <!-- 单软件卡片（保留扩展能力） -->
+      <div class="card" data-idx="0" tabindex="0" data-apk="./dmg.apk" data-filename="dmg.apk">
+        <div class="icon" aria-hidden="true">🍄</div>
+        <div class="info">
+          <div class="name">zsc 毒蘑菇测试</div>
+          <div class="desc">下载apk<code></code></div>
+
+          <div class="progress" aria-hidden="true">
+            <i style="width:0%"></i>
+            <div class="pct" style="margin-left:10px">0%</div>
+          </div>
+          <div class="kv" style="margin-top:8px"></div>
+        </div>
+
+        <div class="ops">
+          <button class="btn download" aria-label="下载 zsc 毒蘑菇测试">下载</button>
+          <button class="btn cancel" style="display:none;background:rgba(255,80,80,0.14);color:var(--text);">取消</button>
+        </div>
+      </div>
+      <!-- 可复制上面一段再修改 data-apk 与信息来添加更多软件 -->
+    </div>
+
+    <div class="footer">©️ ZSC版权所有</div>
+  </div>
+</div>
+
+<script>
+/* ================= 背景 Canvas：星云 + 粒子（与之前逻辑类似） ================= */
+(function(){
+  const canvas = document.getElementById('bgCanvas');
+  const ctx = canvas.getContext('2d');
+  let w=0,h=0,dpr = Math.max(1, window.devicePixelRatio || 1);
+  let particles = [], stars = [], ripples = [];
+
+  function resize(){
+    dpr = Math.max(1, window.devicePixelRatio || 1);
+    w = window.innerWidth; h = window.innerHeight;
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  window.addEventListener('resize', resize, {passive:true});
+  resize();
+
+  function initParticles(){
+    particles = []; stars = []; ripples = [];
+    const count = Math.max(60, Math.round(w*h/12000));
+    for(let i=0;i<count;i++){
+      particles.push({ x:Math.random()*w, y:Math.random()*h, r:(Math.random()*1.6)+0.4, vx:(Math.random()-0.5)*0.15, vy:(Math.random()-0.5)*0.15, alpha:0.25 + Math.random()*0.6, t:Math.random()*Math.PI*2 });
+    }
+    const sCount = Math.max(30, Math.round(w*h/80000));
+    for(let i=0;i<sCount;i++){
+      stars.push({ x:Math.random()*w, y:Math.random()*h*0.8, r:Math.random()*1.8+0.3, flicker:Math.random()*0.8+0.2, t:Math.random()*Math.PI*2 });
+    }
+  }
+  initParticles();
+
+  const nebula = { cx: w*0.78, cy: h*0.18, r: Math.min(w,h)*0.6 };
+
+  let last = 0;
+  function render(ts){
+    const dt = Math.min(40, ts - (last || ts))/1000;
+    last = ts;
+    ctx.clearRect(0,0,w,h);
+    drawNebula();
+    for(let s of stars){
+      s.t += dt*1.6;
+      const a = 0.4 + 0.6*Math.abs(Math.sin(s.t*1.8))*s.flicker;
+      ctx.beginPath(); ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
+    }
+    for(let p of particles){
+      p.t += dt*0.5;
+      p.x += p.vx + Math.sin(p.t*0.6)*0.02;
+      p.y += p.vy + Math.cos(p.t*0.4)*0.02;
+      if(p.x < -10) p.x = w+10;
+      if(p.x > w+10) p.x = -10;
+      if(p.y < -10) p.y = h+10;
+      if(p.y > h+10) p.y = -10;
+      ctx.beginPath(); ctx.fillStyle = `rgba(120,160,255,${p.alpha*0.6})`; ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+    }
+    for(let i=ripples.length-1;i>=0;i--){
+      const r = ripples[i]; r.t += dt*0.8;
+      if(r.t>1.6){ ripples.splice(i,1); continue; }
+      ctx.beginPath();
+      ctx.strokeStyle = `rgba(140,180,255,${Math.max(0,0.7 - r.t*0.9)})`;
+      ctx.lineWidth = (1.2 - r.t*1.2)*6; ctx.arc(r.x,r.y,r.t*r.max,0,Math.PI*2); ctx.stroke();
+    }
+    requestAnimationFrame(render);
+  }
+
+  function drawNebula(){
+    nebula.cx = Math.max(0, Math.min(w, nebula.cx));
+    nebula.cy = Math.max(0, Math.min(h, nebula.cy));
+    const g1 = ctx.createRadialGradient(nebula.cx, nebula.cy, 0, nebula.cx, nebula.cy, nebula.r);
+    g1.addColorStop(0, `rgba(80,140,255,0.12)`); g1.addColorStop(0.25, `rgba(80,140,255,0.06)`); g1.addColorStop(0.6, `rgba(40,20,80,0.02)`); g1.addColorStop(1, `rgba(2,4,8,0.0)`);
+    ctx.fillStyle = g1; ctx.fillRect(0,0,w,h);
+    const cx = nebula.cx*0.98 + Math.sin(Date.now()/6000)*40;
+    const cy = nebula.cy*1.02 + Math.cos(Date.now()/5000)*30;
+    const rg = ctx.createRadialGradient(cx, cy, 0, cx, cy, nebula.r*0.28);
+    rg.addColorStop(0, 'rgba(2,4,8,0.9)'); rg.addColorStop(0.25, 'rgba(8,10,18,0.7)'); rg.addColorStop(1, 'rgba(8,10,18,0.0)');
+    ctx.fillStyle = rg; ctx.fillRect(0,0,w,h);
+  }
+
+  window.addEventListener('pointerdown', (e) => { ripples.push({ x:e.clientX, y:e.clientY, t:0, max: Math.min(w,h)*0.7 }); if(ripples.length>6) ripples.shift(); }, {passive:true});
+  requestAnimationFrame(render);
+
+  window.addEventListener('orientationchange', ()=>{ setTimeout(()=>{ resize(); initParticles(); }, 300); }, {passive:true});
+})();
+
+/* ================= UI: loader，主题切换，卡片入场 & 3D hover（触屏禁用） ================= */
+(function(){
+  const loader = document.getElementById('loader');
+  const root = document.documentElement;
+  const themeBtns = document.querySelectorAll('.theme-btn');
+  const cards = Array.from(document.querySelectorAll('.card'));
+  let currentTheme = localStorage.getItem('zsc_theme') || 'dark';
+
+  // apply saved theme
+  function applyTheme(t){
+    root.classList.remove('theme-light','theme-neon');
+    if(t === 'light') root.classList.add('theme-light');
+    if(t === 'neon') root.classList.add('theme-neon');
+    themeBtns.forEach(b => b.classList.toggle('active', b.dataset.theme === t));
+    localStorage.setItem('zsc_theme', t);
+  }
+  themeBtns.forEach(btn => btn.addEventListener('click', ()=> applyTheme(btn.dataset.theme)));
+  applyTheme(currentTheme);
+
+  // hide loader after small delay and animate cards in
+  window.addEventListener('load', ()=> {
+    setTimeout(()=> {
+      loader.style.opacity = '0';
+      loader.style.visibility = 'hidden';
+      // staggered entry
+      cards.forEach((c, i) => setTimeout(()=> c.classList.add('enter'), i*90 + 160));
+    }, 700);
+  });
+
+  // 3D pointer parallax: enable on non-touch devices only
+  const supportsTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
+  if(!supportsTouch){
+    cards.forEach(card=>{
+      let rect = null;
+      function onMove(e){
+        rect = rect || card.getBoundingClientRect();
+        const cx = rect.left + rect.width/2;
+        const cy = rect.top + rect.height/2;
+        const dx = (e.clientX - cx);
+        const dy = (e.clientY - cy);
+        const rx = (-dy / rect.height) * 8; // rotateX
+        const ry = (dx / rect.width) * 10;  // rotateY
+        card.style.transform = `translateY(-6px) rotateX(${rx}deg) rotateY(${ry}deg) scale(1.01)`;
+        card.classList.add('hover');
+      }
+      function onLeave(){
+        card.style.transform = '';
+        card.classList.remove('hover');
+        rect = null;
+      }
+      card.addEventListener('pointermove', onMove);
+      card.addEventListener('pointerleave', onLeave);
+      card.addEventListener('pointerdown', ()=>{ card.style.transition = 'transform .05s'; setTimeout(()=>card.style.transition='',120); });
+    });
+  } else {
+    // touch devices: avoid heavy pointer handlers — restore simple hover reset
+    cards.forEach(c => c.classList.remove('hover'));
+  }
+})();
+
+/* ================= 下载逻辑（每张卡片） ================= */
+(function(){
+  const cards = Array.from(document.querySelectorAll('.card'));
+  cards.forEach((card, idx) => {
+    const downloadBtn = card.querySelector('.download');
+    const cancelBtn = card.querySelector('.cancel');
+    const progWrap = card.querySelector('.progress');
+    const progBar = progWrap.querySelector('i');
+    const pct = card.querySelector('.pct');
+    const kv = card.querySelector('.kv');
+    const apk = card.dataset.apk || './dmg.apk';
+    const filename = card.dataset.filename || apk.split('/').pop() || 'download.apk';
+
+    let controller = null, downloading = false;
+
+    function setProgress(n){
+      const p = Math.max(0, Math.min(100, Math.round(n)));
+      progBar.style.width = p + '%';
+      pct.textContent = p + '%';
+      progWrap.style.display = 'flex';
+      kv.textContent = p < 100 ? `下载中 · ${p}%` : '保存中...';
+    }
+    function resetProgress(txt){
+      progBar.style.width = '0%';
+      pct.textContent = '0%';
+      progWrap.style.display = 'none';
+      kv.textContent = txt || '';
+    }
+
+    async function start(){
+      if(downloading) return;
+      downloading = true;
+      downloadBtn.disabled = true; downloadBtn.style.opacity = '0.6';
+      cancelBtn.style.display = 'inline-block';
+      controller = new AbortController();
+      setProgress(2);
+      kv.textContent = '初始化...';
+
+      try{
+        const resp = await fetch(apk, { signal: controller.signal });
+        if(!resp.ok) throw new Error('文件读取失败（' + resp.status + '）');
+        if(!resp.body){
+          kv.textContent = '流不可用，尝试直接下载...';
+          window.location.href = apk;
+          return;
+        }
+        const len = resp.headers.get('Content-Length');
+        const total = len ? parseInt(len,10) : null;
+        const reader = resp.body.getReader();
+        const chunks = [];
+        let received = 0;
+        while(true){
+          const {done, value} = await reader.read();
+          if(done) break;
+          chunks.push(value);
+          received += value.byteLength || value.length || 0;
+          if(total) setProgress(received/total*100);
+          else setProgress(Math.min(96, 2 + Math.log10(received+1)*12));
+        }
+        const blob = new Blob(chunks, { type: 'application/vnd.android.package-archive' });
+        setProgress(100);
+        kv.textContent = '触发保存...';
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl; a.download = filename;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(()=> URL.revokeObjectURL(blobUrl), 1500);
+        kv.textContent = '下载完成';
+      } catch(err){
+        if(err.name === 'AbortError') kv.textContent = '已取消';
+        else { console.error(err); kv.textContent = '下载失败：' + (err.message||err); }
+      } finally {
+        downloading = false; controller = null;
+        downloadBtn.disabled = false; downloadBtn.style.opacity = '';
+        cancelBtn.style.display = 'none';
+        setTimeout(()=> resetProgress(''), 1200);
+      }
+    }
+
+    downloadBtn.addEventListener('click', start);
+    cancelBtn.addEventListener('click', ()=>{ if(controller) controller.abort(); });
+
+    card.dataset.idx = idx;
+  });
+})();
+
+/* ================= 可选扩展 API（添加卡片） ================= */
+(function(){
+  window.ZSC = {
+    addCard: function({name,desc,icon,apk,filename}){
+      const grid = document.getElementById('appGrid');
+      const div = document.createElement('div');
+      div.className = 'card'; div.setAttribute('tabindex',0);
+      div.dataset.apk = apk || './dmg.apk'; div.dataset.filename = filename || (apk||'dmg.apk').split('/').pop();
+      div.innerHTML = `
+        <div class="icon">${icon||'📦'}</div>
+        <div class="info">
+          <div class="name">${name||'新软件'}</div>
+          <div class="desc">${desc||''}</div>
+          <div class="progress" aria-hidden="true"><i style="width:0%"></i><div class="pct" style="margin-left:10px">0%</div></div>
+          <div class="kv" style="margin-top:8px"></div>
+        </div>
+        <div class="ops">
+          <button class="btn download">下载</button>
+          <button class="btn cancel" style="display:none;background:rgba(255,80,80,0.14);color:var(--text);">取消</button>
+        </div>`;
+      grid.appendChild(div);
+      // 向页面添加后需刷新或手动绑定事件（为了简短，建议添加后刷新页面以附加脚本）
+    }
+  };
+})();
+
+/* 隐藏 loader（安全预留） */
+window.addEventListener('load', ()=>{ setTimeout(()=>{ const l=document.getElementById('loader'); if(l){ l.style.opacity='0'; l.style.visibility='hidden'; } }, 1200); });
+</script>
+</body>
+</html>
